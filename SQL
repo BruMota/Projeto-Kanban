@@ -143,3 +143,266 @@ CONSTRAINT fk_ADM_NivelAcesso
     ON DELETE RESTRICT 
     ON UPDATE CASCADE 
 ); 
+
+
+#criando views:
+CREATE VIEW vw_DemandasDetalhadas AS 
+SELECT  
+    d.idDemandas, 
+    d.titulo, 
+    d.descricao, 
+    d.dataAbertura, 
+    d.dataLimite, 
+    d.dataConclusao, 
+    -- Informações do Solicitante 
+    s.idSolicitante, 
+    s.nome AS nome_solicitante, 
+    s.email AS email_solicitante, 
+    s.telefone AS telefone_solicitante, 
+    -- Informações do Colaborador 
+    c.idColaborador, 
+    c.nome AS nome_colaborador, 
+    c.email AS email_colaborador, 
+    -- Informações do Departamento 
+    dep.idDepartamento, 
+    dep.nome AS nome_departamento, 
+    -- Status e Prioridade 
+    sd.status AS status_demanda, 
+    pd.prioridade, 
+    -- Cálculos 
+    DATEDIFF(d.dataLimite, CURDATE()) AS dias_restantes, 
+    CASE  
+        WHEN d.dataConclusao IS NOT NULL THEN 'Concluída' 
+        WHEN d.dataLimite < CURDATE() THEN 'Atrasada' 
+        WHEN DATEDIFF(d.dataLimite, CURDATE()) <= 3 THEN 
+'Próximo do prazo' 
+        ELSE 'No prazo' 
+    END AS situacao_prazo 
+FROM Demandas d 
+INNER JOIN Solicitante s ON d.idSolicitante = s.idSolicitante 
+INNER JOIN Colaborador c ON d.idColaborador = c.idColaborador 
+INNER JOIN Departamento dep ON c.idDepartamento = 
+dep.idDepartamento 
+INNER JOIN StatusDemanda sd ON d.idStatusDemanda = 
+sd.idStatusDemanda 
+INNER JOIN PrioridadeDemanda pd ON d.idPrioridadeDemanda = 
+pd.idPrioridadeDemanda; 
+CREATE VIEW vw_ColaboradoresAtivosComSkills AS 
+SELECT  
+    c.idColaborador, 
+    c.nome, 
+    c.email, 
+    c.telefone, 
+    c.dataAdmissao, 
+    -- Informações do Cargo 
+    car.idCargo, 
+    car.nome AS cargo, 
+    -- Informações do Departamento 
+    dep.idDepartamento, 
+    dep.nome AS departamento, 
+    -- Habilidades agrupadas 
+    COALESCE(GROUP_CONCAT(hs.habilidade ORDER BY 
+hs.habilidade SEPARATOR ', '), 'Sem habilidades') AS habilidades, 
+    COUNT(hs.idHardSkill) AS total_habilidades, 
+    -- Demandas em aberto 
+    (SELECT COUNT(*) FROM Demandas d  
+     WHERE d.idColaborador = c.idColaborador  
+     AND d.idStatusDemanda IN (1, 2)) AS demandas_ativas 
+FROM Colaborador c 
+INNER JOIN Cargo car ON c.idCargo = car.idCargo 
+INNER JOIN Departamento dep ON c.idDepartamento = 
+dep.idDepartamento 
+INNER JOIN StatusColaborador sc ON c.idStatusColaborador = 
+sc.idStatusColaborador 
+LEFT JOIN HardSkill hs ON c.idColaborador = hs.idColaborador 
+WHERE sc.status = 'ativo' 
+GROUP BY c.idColaborador, c.nome, c.email, c.telefone, car.nome, dep.nome;
+
+
+
+
+#esquema fisico banco de dados
+
+CREATE DATABASE GestaoDemandas; 
+use GestaoDemandas; 
+CREATE TABLE Solicitante ( 
+idSolicitante INT AUTO_INCREMENT PRIMARY KEY, 
+nome VARCHAR(45) NOT NULL, 
+email VARCHAR(30) NOT NULL UNIQUE, 
+telefone VARCHAR(15), 
+cpf VARCHAR(14) NOT NULL UNIQUE, 
+dataCadastro DATE NOT NULL, 
+senha VARCHAR(255) NOT NULL 
+); 
+CREATE TABLE Departamento ( 
+idDepartamento INT AUTO_INCREMENT PRIMARY KEY, 
+nome VARCHAR(40) NOT NULL UNIQUE, 
+descricao TEXT 
+); 
+CREATE TABLE Cargo ( 
+idCargo INT AUTO_INCREMENT PRIMARY KEY, 
+nome VARCHAR(20) NOT NULL UNIQUE, 
+descricao TEXT 
+); 
+CREATE TABLE StatusColaborador ( 
+idStatusColaborador INT AUTO_INCREMENT PRIMARY KEY, 
+status VARCHAR(15) NOT NULL UNIQUE -- 'ativo', 'inativo' 
+); 
+CREATE TABLE Colaborador ( 
+idColaborador INT AUTO_INCREMENT PRIMARY KEY, 
+nome VARCHAR(40) NOT NULL, 
+email VARCHAR(35) NOT NULL UNIQUE, 
+telefone VARCHAR(15), 
+dataAdmissao DATE NOT NULL, 
+idCargo INT NOT NULL, 
+idDepartamento INT NOT NULL, 
+idStatusColaborador INT NOT NULL, 
+ 
+CONSTRAINT fk_Colaborador_Cargo 
+    FOREIGN KEY (idCargo) REFERENCES Cargo(idCargo) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Colaborador_Departamento 
+    FOREIGN KEY (idDepartamento) REFERENCES 
+Departamento(idDepartamento) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Colaborador_Status 
+    FOREIGN KEY (idStatusColaborador) REFERENCES 
+StatusColaborador(idStatusColaborador) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE 
+); 
+CREATE TABLE HardSkill ( 
+idHardSkill INT AUTO_INCREMENT PRIMARY KEY, 
+idColaborador INT NOT NULL, 
+habilidade VARCHAR(100) NOT NULL, 
+ 
+CONSTRAINT fk_HardSkill_Colaborador 
+    FOREIGN KEY (idColaborador) REFERENCES 
+Colaborador(idColaborador) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE 
+); 
+CREATE TABLE StatusDemanda ( 
+idStatusDemanda INT AUTO_INCREMENT PRIMARY KEY, 
+status VARCHAR(15) NOT NULL UNIQUE -- 'Aberta', 'Em 
+andamento', etc. 
+); 
+CREATE TABLE PrioridadeDemanda ( 
+idPrioridadeDemanda INT AUTO_INCREMENT PRIMARY KEY, 
+prioridade VARCHAR(10) NOT NULL UNIQUE -- 'Baixa', 'Média', 
+etc. 
+); 
+CREATE TABLE Demandas ( 
+idDemandas INT AUTO_INCREMENT PRIMARY KEY, 
+titulo VARCHAR(100) NOT NULL, 
+descricao TEXT NOT NULL, 
+dataAbertura DATETIME NOT NULL, 
+dataLimite DATE, 
+dataConclusao DATETIME, 
+idSolicitante INT NOT NULL, 
+idColaborador INT NOT NULL, 
+idStatusDemanda INT NOT NULL, 
+idPrioridadeDemanda INT NOT NULL, 
+ 
+CONSTRAINT fk_Demandas_Solicitante 
+    FOREIGN KEY (idSolicitante) REFERENCES 
+Solicitante(idSolicitante) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Demandas_Colaborador 
+    FOREIGN KEY (idColaborador) REFERENCES 
+Colaborador(idColaborador) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Demandas_Status 
+    FOREIGN KEY (idStatusDemanda) REFERENCES 
+StatusDemanda(idStatusDemanda) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Demandas_Prioridade 
+    FOREIGN KEY (idPrioridadeDemanda) REFERENCES 
+PrioridadeDemanda(idPrioridadeDemanda) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE 
+); 
+CREATE TABLE NivelAcesso ( 
+idNivelAcesso INT AUTO_INCREMENT PRIMARY KEY, 
+nivel VARCHAR(15) NOT NULL UNIQUE -- 'super admin', 'admin 
+comum' 
+); 
+CREATE TABLE ADM ( 
+idADM INT AUTO_INCREMENT PRIMARY KEY, 
+nome VARCHAR(60) NOT NULL, 
+email VARCHAR(100) NOT NULL UNIQUE, 
+senha VARCHAR(255) NOT NULL, 
+dataCadastro DATETIME NOT NULL, 
+idColaborador INT NOT NULL, 
+idNivelAcesso INT NOT NULL, 
+ 
+ 
+CONSTRAINT fk_ADM_Colaborador 
+    FOREIGN KEY (idColaborador) REFERENCES 
+Colaborador(idColaborador) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_ADM_NivelAcesso 
+    FOREIGN KEY (idNivelAcesso) REFERENCES 
+NivelAcesso(idNivelAcesso) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE 
+);
+
+
+#triggers:
+
+DELIMITER $$ 
+CREATE TRIGGER tg_valida_colaborador_ativo 
+BEFORE INSERT ON Demandas 
+FOR EACH ROW 
+BEGIN 
+    DECLARE status_colaborador VARCHAR(15); 
+     
+    -- Busca status do colaborador 
+    SELECT sc.status INTO status_colaborador 
+    FROM Colaborador c 
+    INNER JOIN StatusColaborador sc ON c.idStatusColaborador = 
+sc.idStatusColaborador 
+    WHERE c.idColaborador = NEW.idColaborador; 
+     
+    IF status_colaborador = 'inativo' THEN 
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Não é possível atribuir 
+demanda a colaborador inativo.'; 
+    END IF; 
+END$$ 
+DELIMITER ; 
+ 
+ 
+2 - Trigger: Impedir Exclusão de Departamento com Colaboradores Ativos: 
+DELIMITER $$ 
+CREATE TRIGGER tg_valida_exclusao_departamento 
+BEFORE DELETE ON Departamento 
+FOR EACH ROW 
+BEGIN 
+    DECLARE colaboradores_ativos INT; 
+     
+    SELECT COUNT(*) INTO colaboradores_ativos 
+    FROM Colaborador c 
+    INNER JOIN StatusColaborador sc ON c.idStatusColaborador = 
+sc.idStatusColaborador 
+    WHERE c.idDepartamento = OLD.idDepartamento 
+    AND sc.status = 'ativo'; 
+     
+    IF colaboradores_ativos > 0 THEN 
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Não é possível excluir 
+departamento com colaboradores ativos.'; 
+    END IF; 
+END$$ 
+DELIMITER ;

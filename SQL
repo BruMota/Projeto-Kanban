@@ -1,0 +1,145 @@
+ Modelo Lógico de Dados: Diagramas e documentação detalhada de tabelas, 
+colunas, chaves primarias e estrangeiras: 
+CREATE DATABASE GestaoDemandas; 
+use GestaoDemandas; 
+CREATE TABLE Solicitante ( 
+idSolicitante INT AUTO_INCREMENT PRIMARY KEY, 
+nome VARCHAR(45) NOT NULL, 
+email VARCHAR(30) NOT NULL UNIQUE, 
+telefone VARCHAR(15), 
+cpf VARCHAR(14) NOT NULL UNIQUE, 
+dataCadastro DATE NOT NULL, 
+senha VARCHAR(255) NOT NULL 
+); 
+CREATE TABLE Departamento ( 
+idDepartamento INT AUTO_INCREMENT PRIMARY KEY, 
+nome VARCHAR(40) NOT NULL UNIQUE, 
+descricao TEXT 
+); 
+CREATE TABLE Cargo ( 
+idCargo INT AUTO_INCREMENT PRIMARY KEY, 
+nome VARCHAR(20) NOT NULL UNIQUE, 
+descricao TEXT 
+); 
+CREATE TABLE StatusColaborador ( 
+idStatusColaborador INT AUTO_INCREMENT PRIMARY KEY, 
+status VARCHAR(15) NOT NULL UNIQUE -- 'ativo', 'inativo' 
+); 
+CREATE TABLE Colaborador ( 
+idColaborador INT AUTO_INCREMENT PRIMARY KEY, 
+ • Desenvolvimento de Diagramas DER no MySQL Workbench: 
+A equipe iniciou a elaboração dos diagramas de entidade-relacionamento (DER) 
+utilizando o MySQL Workbench, uma ferramenta essencial para o mapeamento e 
+estruturação do banco de dados da empresa. Durante o processo, foram discutidas as 
+principais entidades do sistema, suas inter-relações e os fluxos de informações 
+necessários para garantir que o modelo de dados fosse robusto e eficiente. A 
+colaboração entre os membros da equipe foi ativa, permitindo que todas as possíveis 
+interações entre as entidades fossem adequadamente representadas e visualizadas na 
+ferramenta. 
+• Criação do Logotipo da Empresa: 
+Um dos principais focos da reunião foi o design do logotipo da RUBY Alignment. A 
+equipe discutiu conceitos de identidade visual, alinhando a estética da marca aos 
+valores e objetivos da empresa. A proposta de logo foi revisada e ajustada em 
+conjunto, levando em consideração as sugestões de cada membro da equipe. O 
+logotipo será uma representação gráfica da empresa, destacando seus principais 
+pilares e garantindo que a imagem da marca seja marcante e facilmente reconhecível 
+no mercado. 
+nome VARCHAR(40) NOT NULL, 
+email VARCHAR(35) NOT NULL UNIQUE, 
+telefone VARCHAR(15), 
+dataAdmissao DATE NOT NULL, 
+idCargo INT NOT NULL, 
+idDepartamento INT NOT NULL, 
+idStatusColaborador INT NOT NULL, 
+ 
+CONSTRAINT fk_Colaborador_Cargo 
+    FOREIGN KEY (idCargo) REFERENCES Cargo(idCargo) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Colaborador_Departamento 
+    FOREIGN KEY (idDepartamento) REFERENCES Departamento(idDepartamento) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Colaborador_Status 
+    FOREIGN KEY (idStatusColaborador) REFERENCES 
+StatusColaborador(idStatusColaborador) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE 
+); 
+CREATE TABLE HardSkill ( 
+idHardSkill INT AUTO_INCREMENT PRIMARY KEY, 
+idColaborador INT NOT NULL, 
+habilidade VARCHAR(100) NOT NULL, 
+ 
+CONSTRAINT fk_HardSkill_Colaborador 
+    FOREIGN KEY (idColaborador) REFERENCES Colaborador(idColaborador) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE 
+); 
+CREATE TABLE StatusDemanda ( 
+idStatusDemanda INT AUTO_INCREMENT PRIMARY KEY, 
+status VARCHAR(15) NOT NULL UNIQUE -- 'Aberta', 'Em andamento', etc. 
+); 
+CREATE TABLE PrioridadeDemanda ( 
+idPrioridadeDemanda INT AUTO_INCREMENT PRIMARY KEY, 
+prioridade VARCHAR(10) NOT NULL UNIQUE -- 'Baixa', 'Média', etc. 
+); 
+CREATE TABLE Demandas ( 
+idDemandas INT AUTO_INCREMENT PRIMARY KEY, 
+titulo VARCHAR(100) NOT NULL, 
+descricao TEXT NOT NULL, 
+dataAbertura DATETIME NOT NULL, 
+dataLimite DATE, 
+dataConclusao DATETIME, 
+idSolicitante INT NOT NULL, 
+idColaborador INT NOT NULL, 
+idStatusDemanda INT NOT NULL, 
+idPrioridadeDemanda INT NOT NULL, 
+ 
+CONSTRAINT fk_Demandas_Solicitante 
+    FOREIGN KEY (idSolicitante) REFERENCES Solicitante(idSolicitante) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Demandas_Colaborador 
+    FOREIGN KEY (idColaborador) REFERENCES Colaborador(idColaborador) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Demandas_Status 
+    FOREIGN KEY (idStatusDemanda) REFERENCES StatusDemanda(idStatusDemanda) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_Demandas_Prioridade 
+    FOREIGN KEY (idPrioridadeDemanda) REFERENCES 
+PrioridadeDemanda(idPrioridadeDemanda) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE 
+); 
+CREATE TABLE NivelAcesso ( 
+idNivelAcesso INT AUTO_INCREMENT PRIMARY KEY, 
+nivel VARCHAR(15) NOT NULL UNIQUE -- 'super admin', 'admin comum' 
+); 
+CREATE TABLE ADM ( 
+idADM INT AUTO_INCREMENT PRIMARY KEY, 
+nome VARCHAR(60) NOT NULL, 
+email VARCHAR(100) NOT NULL UNIQUE, 
+senha VARCHAR(255) NOT NULL, 
+dataCadastro DATETIME NOT NULL, 
+idColaborador INT NOT NULL, 
+idNivelAcesso INT NOT NULL, 
+ 
+ 
+CONSTRAINT fk_ADM_Colaborador 
+    FOREIGN KEY (idColaborador) REFERENCES Colaborador(idColaborador) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE, 
+ 
+CONSTRAINT fk_ADM_NivelAcesso 
+    FOREIGN KEY (idNivelAcesso) REFERENCES NivelAcesso(idNivelAcesso) 
+    ON DELETE RESTRICT 
+    ON UPDATE CASCADE 
+); 
